@@ -24,16 +24,16 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item" title="Dashboard" onclick="switchPage('training', event)">
+                <a href="#" id="navDashboard" class="nav-item" title="Dashboard" onclick="switchPage('dashboard', event)">
                     <i class="fa-solid fa-house"></i>
                 </a>
                 <a href="#" id="navEmployees" class="nav-item" title="Employees" onclick="switchPage('employees', event)">
                     <i class="fa-solid fa-user-group"></i>
                 </a>
-                <a href="#" class="nav-item" title="Attendance & Leave">
+                <a href="#" id="navAttendance" class="nav-item" title="Attendance & Leave" onclick="switchPage('attendance', event)">
                     <i class="fa-solid fa-calendar-days"></i>
                 </a>
-                <a href="#" class="nav-item" title="Payroll">
+                <a href="#" id="navPayroll" class="nav-item" title="Payroll" onclick="switchPage('payroll', event)">
                     <i class="fa-solid fa-file-invoice-dollar"></i>
                 </a>
                 <!-- Active Page: Training -->
@@ -41,13 +41,13 @@
                     <i class="fa-solid fa-graduation-cap"></i>
                     <span class="active-indicator"></span>
                 </a>
-                <a href="#" class="nav-item" title="Support Helpdesk">
+                <a href="#" id="navHelpdesk" class="nav-item" title="Support Helpdesk" onclick="switchPage('helpdesk', event)">
                     <i class="fa-solid fa-headset"></i>
                 </a>
-                <a href="#" class="nav-item" title="Analytics & Workforce">
+                <a href="#" id="navAnalytics" class="nav-item" title="Analytics & Workforce" onclick="switchPage('analytics', event)">
                     <i class="fa-solid fa-chart-pie"></i>
                 </a>
-                <a href="#" class="nav-item" title="Settings">
+                <a href="#" id="navSettings" class="nav-item" title="Settings" onclick="switchPage('settings', event)">
                     <i class="fa-solid fa-gear"></i>
                 </a>
             </nav>
@@ -375,7 +375,6 @@
                 </div>
             </div>
 
-            <!-- PAGE VIEW 3: DEDICATED EMPLOYEE PROFILE FULL INFO PAGE -->
             <div id="employeeProfileView" class="page-view hidden">
                 <div class="profile-page-topbar">
                     <button type="button" class="btn btn-secondary" onclick="switchPage('employees')">
@@ -384,6 +383,60 @@
                 </div>
                 <div id="empProfilePageContent">
                     <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+
+            <!-- PAGE VIEW 4: DASHBOARD -->
+            <div id="dashboardView" class="page-view hidden">
+                <div class="section-card" style="text-align: center; padding: 60px 20px;">
+                    <i class="fa-solid fa-chart-line" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 20px;"></i>
+                    <h2 style="color: #475569; margin-bottom: 10px;">Dashboard Overview</h2>
+                    <p style="color: #94a3b8; max-width: 500px; margin: 0 auto;">This section is currently under construction. Check back soon for high-level HR metrics and charts.</p>
+                </div>
+            </div>
+
+            <!-- PAGE VIEW 5: ATTENDANCE & LEAVE -->
+            <div id="attendanceView" class="page-view hidden">
+                <div class="section-card" style="text-align: center; padding: 60px 20px;">
+                    <i class="fa-regular fa-calendar-check" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 20px;"></i>
+                    <h2 style="color: #475569; margin-bottom: 10px;">Attendance & Leave Management</h2>
+                    <p style="color: #94a3b8; max-width: 500px; margin: 0 auto;">This section is currently under construction. Manage employee timesheets and leave requests here.</p>
+                </div>
+            </div>
+
+            <!-- PAGE VIEW 6: PAYROLL -->
+            <div id="payrollView" class="page-view hidden">
+                <div class="section-card" style="text-align: center; padding: 60px 20px;">
+                    <i class="fa-solid fa-money-check-dollar" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 20px;"></i>
+                    <h2 style="color: #475569; margin-bottom: 10px;">Payroll Processing</h2>
+                    <p style="color: #94a3b8; max-width: 500px; margin: 0 auto;">This section is currently under construction. Generate payslips and track salary disbursements here.</p>
+                </div>
+            </div>
+
+            <!-- PAGE VIEW 7: HELPDESK -->
+            <div id="helpdeskView" class="page-view hidden">
+                <div class="section-card" style="text-align: center; padding: 60px 20px;">
+                    <i class="fa-solid fa-headset" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 20px;"></i>
+                    <h2 style="color: #475569; margin-bottom: 10px;">Support Helpdesk</h2>
+                    <p style="color: #94a3b8; max-width: 500px; margin: 0 auto;">This section is currently under construction. Handle HR tickets and employee grievances here.</p>
+                </div>
+            </div>
+
+            <!-- PAGE VIEW 8: ANALYTICS -->
+            <div id="analyticsView" class="page-view hidden">
+                <div class="section-card" style="text-align: center; padding: 60px 20px;">
+                    <i class="fa-solid fa-chart-pie" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 20px;"></i>
+                    <h2 style="color: #475569; margin-bottom: 10px;">Analytics & Workforce Planning</h2>
+                    <p style="color: #94a3b8; max-width: 500px; margin: 0 auto;">This section is currently under construction. Discover insights about your workforce here.</p>
+                </div>
+            </div>
+
+            <!-- PAGE VIEW 9: SETTINGS -->
+            <div id="settingsView" class="page-view hidden">
+                <div class="section-card" style="text-align: center; padding: 60px 20px;">
+                    <i class="fa-solid fa-gears" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 20px;"></i>
+                    <h2 style="color: #475569; margin-bottom: 10px;">System Settings</h2>
+                    <p style="color: #94a3b8; max-width: 500px; margin: 0 auto;">This section is currently under construction. Configure application preferences and user roles here.</p>
                 </div>
             </div>
 

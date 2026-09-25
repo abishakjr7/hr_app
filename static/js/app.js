@@ -354,35 +354,58 @@ function renderPaginationControlsUI(tableId, paginationData, containerId, startI
 function switchPage(page, event) {
     if (event) event.preventDefault();
 
-    const trainingView = document.getElementById('trainingView');
-    const employeesView = document.getElementById('employeesView');
-    const employeeProfileView = document.getElementById('employeeProfileView');
-    
-    const navTraining = document.getElementById('navTraining');
-    const navEmployees = document.getElementById('navEmployees');
+    // Hide all page views
+    document.querySelectorAll('.page-view').forEach(view => {
+        view.classList.add('hidden');
+    });
+
+    // Remove active class from all nav items
+    document.querySelectorAll('.nav-item').forEach(nav => {
+        nav.classList.remove('active');
+        const indicator = nav.querySelector('.active-indicator');
+        if (indicator) indicator.remove();
+    });
+
     const pageHeading = document.getElementById('pageHeading');
+    
+    // Set active nav
+    let activeNavId = 'nav' + page.charAt(0).toUpperCase() + page.slice(1);
+    if (page === 'profile') activeNavId = 'navEmployees';
+    const activeNav = document.getElementById(activeNavId);
+    if (activeNav) {
+        activeNav.classList.add('active');
+        if (!activeNav.querySelector('.active-indicator')) {
+            activeNav.insertAdjacentHTML('beforeend', '<span class="active-indicator"></span>');
+        }
+    }
 
-    trainingView.classList.add('hidden');
-    employeesView.classList.add('hidden');
-    employeeProfileView.classList.add('hidden');
-
+    let targetView = document.getElementById(page + 'View');
+    
     if (page === 'employees') {
-        employeesView.classList.remove('hidden');
-        if (navTraining) navTraining.classList.remove('active');
-        if (navEmployees) navEmployees.classList.add('active');
         if (pageHeading) pageHeading.innerHTML = `Employee Directory <span class="wave-emoji">👥</span>`;
         loadEmployeePageTable();
     } else if (page === 'profile') {
-        employeeProfileView.classList.remove('hidden');
-        if (navTraining) navTraining.classList.remove('active');
-        if (navEmployees) navEmployees.classList.add('active');
+        targetView = document.getElementById('employeeProfileView');
         if (pageHeading) pageHeading.innerHTML = `Employee Profile Page <span class="wave-emoji">🪪</span>`;
-    } else {
-        trainingView.classList.remove('hidden');
-        if (navEmployees) navEmployees.classList.remove('active');
-        if (navTraining) navTraining.classList.add('active');
+    } else if (page === 'training') {
         if (pageHeading) pageHeading.innerHTML = `HR Training Center <span class="wave-emoji">🎓</span>`;
         loadTrainings();
+    } else if (page === 'dashboard') {
+        if (pageHeading) pageHeading.innerHTML = `Dashboard Overview <span class="wave-emoji">📊</span>`;
+    } else if (page === 'attendance') {
+        if (pageHeading) pageHeading.innerHTML = `Attendance & Leave <span class="wave-emoji">📅</span>`;
+    } else if (page === 'payroll') {
+        if (pageHeading) pageHeading.innerHTML = `Payroll Management <span class="wave-emoji">💰</span>`;
+    } else if (page === 'helpdesk') {
+        if (pageHeading) pageHeading.innerHTML = `Support Helpdesk <span class="wave-emoji">🎧</span>`;
+    } else if (page === 'analytics') {
+        if (pageHeading) pageHeading.innerHTML = `Analytics & Workforce <span class="wave-emoji">📈</span>`;
+    } else if (page === 'settings') {
+        if (pageHeading) pageHeading.innerHTML = `System Settings <span class="wave-emoji">⚙️</span>`;
+    }
+    
+    if (targetView) {
+        targetView.classList.remove('hidden');
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
