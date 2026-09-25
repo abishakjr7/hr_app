@@ -166,9 +166,12 @@ async function printEmployeeTrainings(emCode) {
         </head>
         <body>
             <div class="header">
-                <div>
-                    <h1>RMS - EMPLOYEE TRAINING TRANSCRIPT</h1>
-                    <p>Official Record of Attended Learning & Skill Programs</p>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <img src="/static/images/logo.png" alt="HR RMS Logo" style="height: 52px; object-fit: contain;" onerror="this.style.display='none'">
+                    <div>
+                        <h1>RMS - EMPLOYEE TRAINING TRANSCRIPT</h1>
+                        <p>Official Record of Attended Learning & Skill Programs</p>
+                    </div>
                 </div>
             </div>
 
@@ -1064,9 +1067,12 @@ function printTraining(id) {
         </head>
         <body>
             <div class="header">
-                <div>
-                    <h1>RMS - TRAINING PROGRAM REPORT</h1>
-                    <p>Skill Development & Employee Knowledge Verification</p>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <img src="/static/images/logo.png" alt="HR RMS Logo" style="height: 52px; object-fit: contain;" onerror="this.style.display='none'">
+                    <div>
+                        <h1>RMS - TRAINING PROGRAM REPORT</h1>
+                        <p>Skill Development & Employee Knowledge Verification</p>
+                    </div>
                 </div>
                 <span class="badge ${item.status.toLowerCase().replace(' ', '-')}">${escapeHtml(item.status)}</span>
             </div>
