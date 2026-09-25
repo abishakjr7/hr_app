@@ -1,0 +1,12 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Git
+.git/
+.gitignore
+
+# Local dev only
+*.log

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR RMS - Training & Employee Management</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item" title="Dashboard" onclick="switchPage('training', event)">
+                    <i class="fa-solid fa-house"></i>
+                </a>
+                <a href="#" id="navEmployees" class="nav-item" title="Employees" onclick="switchPage('employees', event)">
+                    <i class="fa-solid fa-user-group"></i>
+                </a>
+                <a href="#" class="nav-item" title="Attendance & Leave">
+                    <i class="fa-solid fa-calendar-days"></i>
+                </a>
+                <a href="#" class="nav-item" title="Payroll">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                </a>
+                <!-- Active Page: Training -->
+                <a href="#" id="navTraining" class="nav-item active" title="Training & Learning" onclick="switchPage('training', event)">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span class="active-indicator"></span>
+                </a>
+                <a href="#" class="nav-item" title="Support Helpdesk">
+                    <i class="fa-solid fa-headset"></i>
+                </a>
+                <a href="#" class="nav-item" title="Analytics & Workforce">
+                    <i class="fa-solid fa-chart-pie"></i>
+                </a>
+                <a href="#" class="nav-item" title="Settings">
+                    <i class="fa-solid fa-gear"></i>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Top Header -->
+            <header class="top-header">
+                <div class="user-greeting">
+                    <div class="avatar-wrapper">
+                        <div class="user-avatar-icon">
+                            <i class="fa-solid fa-user-tie"></i>
+                        </div>
+                        <span class="online-indicator"></span>
+                    </div>
+                    <div class="greeting-text">
+                        <h2 id="pageHeading">HR Training Center <span class="wave-emoji">🎓</span></h2>
+                        <span class="status-badge"><i class="fa-solid fa-circle"></i> System Active</span>
+                    </div>
+                </div>
+
+                <div class="header-actions">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                        <input type="text" id="globalSearch" placeholder="Search trainings, topics, faculty..." oninput="handleSearch(this.value)">
+                    </div>
+
+                    <button class="header-icon-btn" title="Notifications">
+                        <i class="fa-regular fa-bell"></i>
+                        <span class="notification-dot"></span>
+                    </button>
+
+                    <button class="header-icon-btn" title="Messages">
+                        <i class="fa-regular fa-envelope"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- PAGE VIEW 1: TRAINING DASHBOARD -->
+            <div id="trainingView" class="page-view">
+                <div class="dashboard-grid">
+                    <!-- Left Main Content Column -->
+                    <div class="grid-primary">
+                        
+                        <!-- Overview Metrics Cards -->
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <span class="metric-title">Total Programs</span>
+                                    <div class="metric-badge blue"><i class="fa-solid fa-book"></i></div>
+                                </div>
+                                <div class="metric-value" id="statTotal">0</div>
+                                <div class="metric-subtext"><span class="trend-up"><i class="fa-solid fa-arrow-up"></i> Active</span> learning catalog</div>
+                            </div>
+
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <span class="metric-title">In Progress</span>
+                                    <div class="metric-badge orange"><i class="fa-solid fa-spinner fa-spin-pulse"></i></div>
+                                </div>
+                                <div class="metric-value" id="statInProgress">0</div>
+                                <div class="metric-subtext"><span class="highlight">Ongoing</span> sessions</div>
+                            </div>
+
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <span class="metric-title">Completed Hours</span>
+                                    <div class="metric-badge green"><i class="fa-solid fa-clock"></i></div>
+                                </div>
+                                <div class="metric-value" id="statHoursCompleted">0 <small style="font-size: 0.6em; color: #64748b;">hrs</small></div>
+                                <div class="metric-subtext">out of <span id="statTargetHours">0</span> total hrs</div>
+                            </div>
+
+                            <div class="metric-card chart-metric-card">
+                                <div class="completion-dial-container">
+                                    <svg class="progress-ring" width="76" height="76">
+                                        <circle class="progress-ring-circle-bg" stroke="#e2e8f0" stroke-width="7" fill="transparent" r="30" cx="38" cy="38"/>
+                                        <circle class="progress-ring-circle" id="completionRing" stroke="#00a884" stroke-width="7" fill="transparent" r="30" cx="38" cy="38"/>
+                                    </svg>
+                                    <span class="ring-text" id="ringPercentage">0%</span>
+                                </div>
+                                <div class="dial-info">
+                                    <h4>Learning Progress</h4>
+                                    <p>Overall completion rate across all active programs</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Training Action Bar & Filters -->
+                        <div class="section-card">
+                            <div class="card-header">
+                                <div class="header-left">
+                                    <h3 class="card-title">Training Programs</h3>
+                                    <p class="card-subtitle">Manage upcoming, active, and completed skill development programs.</p>
+                                </div>
+                                <div class="header-actions-group">
+                                    <div class="filter-dropdown-wrapper">
+                                        <i class="fa-solid fa-filter filter-icon"></i>
+                                        <select id="statusFilter" class="custom-select" onchange="filterTrainings()">
+                                            <option value="All">All Statuses</option>
+                                            <option value="In Progress">In Progress</option>
+                                            <option value="Completed">Completed</option>
+                                            <option value="Upcoming">Upcoming</option>
+                                        </select>
+                                    </div>
+
+                                    <button class="btn btn-secondary" onclick="exportTrainingsToExcel()">
+                                        <i class="fa-solid fa-file-excel text-green"></i> Export Excel
+                                    </button>
+
+                                    <button class="btn btn-primary" onclick="openAddModal()">
+                                        <i class="fa-solid fa-plus"></i> Add Training
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Training Table -->
+                            <div class="table-responsive">
+                                <table class="custom-table" id="trainingsTable">
+                                    <thead>
+                                        <tr>
+                                            <th class="sortable" onclick="handleTableSort('trainings', 'date')">Date <i class="fa-solid fa-sort sort-icon" id="sort-trainings-date"></i></th>
+                                            <th class="sortable" onclick="handleTableSort('trainings', 'topic')">Training Topic <i class="fa-solid fa-sort sort-icon" id="sort-trainings-topic"></i></th>
+                                            <th class="sortable" onclick="handleTableSort('trainings', 'faculty')">Faculty / Instructor <i class="fa-solid fa-sort sort-icon" id="sort-trainings-faculty"></i></th>
+                                            <th class="sortable" onclick="handleTableSort('trainings', 'hours_completed')">Duration & Hours <i class="fa-solid fa-sort sort-icon" id="sort-trainings-hours_completed"></i></th>
+                                            <th>Progress</th>
+                                            <th>Attendees</th>
+                                            <th class="sortable" onclick="handleTableSort('trainings', 'status')">Status <i class="fa-solid fa-sort sort-icon" id="sort-trainings-status"></i></th>
+                                            <th style="text-align: right;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="trainingsTbody">
+                                        <!-- Dynamic rows loaded via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Pagination & Page Sorter Footer -->
+                            <div class="pagination-container">
+                                <div class="pagination-info">
+                                    <span>Rows per page:</span>
+                                    <select class="custom-select mini-select" onchange="changePageSize('trainings', this.value)">
+                                        <option value="5">5</option>
+                                        <option value="10" selected>10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                    <span class="pagination-text">Showing <strong id="trainingsPageStart">0</strong>-<strong id="trainingsPageEnd">0</strong> of <strong id="trainingsTotalCount">0</strong></span>
+                                </div>
+                                <div class="pagination-controls" id="trainingsPaginationControls">
+                                    <!-- Dynamic pagination buttons -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Sidebar Column (AI Assistant & Quick Actions) -->
+                    <div class="grid-secondary">
+                        <!-- Add / Quick Form Panel (Inline Card) -->
+                        <div class="section-card form-panel-card" id="quickFormCard">
+                            <div class="card-header border-bottom">
+                                <h3 class="card-title" id="formCardTitle"><i class="fa-solid fa-plus-circle text-teal"></i> Add Training Session</h3>
+                                <button type="button" class="btn-icon-close" onclick="resetForm()" title="Reset Form">
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                </button>
+                            </div>
+                            
+                            <form id="trainingForm" onsubmit="handleFormSubmit(event)" class="training-form">
+                                <input type="hidden" id="trainingId" value="">
+
+                                <div class="form-group">
+                                    <label for="trainingDate">Date <span class="required">*</span></label>
+                                    <div class="input-icon-wrapper">
+                                        <i class="fa-regular fa-calendar input-icon"></i>
+                                        <input type="date" id="trainingDate" class="form-input" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="trainingTopic">Training Topic <span class="required">*</span></label>
+                                    <div class="input-icon-wrapper">
+                                        <i class="fa-solid fa-book-bookmark input-icon"></i>
+                                        <input type="text" id="trainingTopic" class="form-input" placeholder="e.g., Leadership & Management" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="trainingFaculty">Faculty / Instructor <span class="required">*</span></label>
+                                    <div class="input-icon-wrapper">
+                                        <i class="fa-solid fa-chalkboard-user input-icon"></i>
+                                        <input type="text" id="trainingFaculty" class="form-input" placeholder="Type or pick faculty name..." list="facultyDatalist" required>
+                                        <datalist id="facultyDatalist"></datalist>
+                                    </div>
+                                    <small class="input-hint">Autofills with employee & trainer list</small>
+                                </div>
+
+                                <div class="form-row-2col">
+                                    <div class="form-group">
+                                        <label for="programDuration">Duration (Hrs) <span class="required">*</span></label>
+                                        <input type="number" id="programDuration" class="form-input" min="0.5" step="0.5" placeholder="30" required oninput="calculateAutoStatus()">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="hoursCompleted">Completed (Hrs) <span class="required">*</span></label>
+                                        <input type="number" id="hoursCompleted" class="form-input" min="0" step="0.5" placeholder="15" required oninput="calculateAutoStatus()">
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <div class="label-with-btn">
+                                        <label for="trainingAttendees">Attendees <span class="required">*</span></label>
+                                        <button type="button" class="btn-text-action" onclick="openEmployeeDirectoryModal(event)">
+                                            <i class="fa-solid fa-users-viewfinder"></i> Pick Employees
+                                        </button>
+                                    </div>
+                                    <div class="input-icon-wrapper">
+                                        <i class="fa-solid fa-users input-icon"></i>
+                                        <input type="text" id="trainingAttendees" class="form-input" placeholder="Type or pick from employee directory..." list="employeeDatalist" required>
+                                        <datalist id="employeeDatalist"></datalist>
+                                    </div>
+                                    <small class="input-hint">Separate employee names with commas or pick from DB</small>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="trainingNotes">Program Notes / Description</label>
+                                    <textarea id="trainingNotes" class="form-textarea" rows="2" placeholder="Key objectives, syllabus overview..."></textarea>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="submit" id="submitBtn" class="btn btn-teal btn-block">
+                                        <i class="fa-solid fa-floppy-disk"></i> Save Training Session
+                                    </button>
+                                    <button type="button" id="cancelEditBtn" class="btn btn-secondary btn-block hidden" onclick="cancelEdit()">
+                                        Cancel Edit
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE VIEW 2: FULL EMPLOYEES LIST PAGE VIEW -->
+            <div id="employeesView" class="page-view hidden">
+                <div class="section-card">
+                    <div class="card-header">
+                        <div class="header-left">
+                            <h3 class="card-title"><i class="fa-solid fa-user-group text-teal"></i> Employee Directory (<span id="empPageTotalBadge">0</span>)</h3>
+                            <p class="card-subtitle">Complete workforce registry. Click column headers to sort, or click any row to view profile page.</p>
+                        </div>
+                        <div class="header-actions-group">
+                            <div class="search-box">
+                                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                                <input type="text" id="empPageSearch" placeholder="Search by name, code, designation..." oninput="loadEmployeePageTable()">
+                            </div>
+
+                            <div class="filter-dropdown-wrapper">
+                                <i class="fa-solid fa-filter filter-icon"></i>
+                                <select id="empPageDeptFilter" class="custom-select" onchange="loadEmployeePageTable()">
+                                    <option value="All">All Departments</option>
+                                </select>
+                            </div>
+
+                            <div class="filter-dropdown-wrapper">
+                                <select id="empPageStatusFilter" class="custom-select" onchange="loadEmployeePageTable()">
+                                    <option value="All">All Statuses</option>
+                                    <option value="ACTIVE">ACTIVE</option>
+                                    <option value="INACTIVE">INACTIVE</option>
+                                </select>
+                            </div>
+
+                            <button class="btn btn-secondary" onclick="exportEmployeesToExcel()">
+                                <i class="fa-solid fa-file-excel text-green"></i> Export Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Employee Main Directory Table -->
+                    <div class="table-responsive">
+                        <table class="custom-table" id="employeesPageTable">
+                            <thead>
+                                <tr>
+                                    <th class="sortable" onclick="handleTableSort('employees', 'em_code')">Emp Code <i class="fa-solid fa-sort sort-icon" id="sort-employees-em_code"></i></th>
+                                    <th class="sortable" onclick="handleTableSort('employees', 'full_name')">Employee Name <i class="fa-solid fa-sort sort-icon" id="sort-employees-full_name"></i></th>
+                                    <th class="sortable" onclick="handleTableSort('employees', 'des_name')">Designation <i class="fa-solid fa-sort sort-icon" id="sort-employees-des_name"></i></th>
+                                    <th class="sortable" onclick="handleTableSort('employees', 'dep_name')">Department <i class="fa-solid fa-sort sort-icon" id="sort-employees-dep_name"></i></th>
+                                    <th class="sortable" onclick="handleTableSort('employees', 'em_joining_date')">Joining Date <i class="fa-solid fa-sort sort-icon" id="sort-employees-em_joining_date"></i></th>
+                                    <th>Phone & Email</th>
+                                    <th class="sortable" onclick="handleTableSort('employees', 'status')">Status <i class="fa-solid fa-sort sort-icon" id="sort-employees-status"></i></th>
+                                    <th style="text-align: right;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="empPageTbody">
+                                <!-- Loaded dynamically via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination & Page Sorter Footer -->
+                    <div class="pagination-container">
+                        <div class="pagination-info">
+                            <span>Rows per page:</span>
+                            <select class="custom-select mini-select" onchange="changePageSize('employees', this.value)">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <span class="pagination-text">Showing <strong id="empPageStart">0</strong>-<strong id="empPageEnd">0</strong> of <strong id="empTotalCount">0</strong></span>
+                        </div>
+                        <div class="pagination-controls" id="empPaginationControls">
+                            <!-- Dynamic pagination buttons -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE VIEW 3: DEDICATED EMPLOYEE PROFILE FULL INFO PAGE -->
+            <div id="employeeProfileView" class="page-view hidden">
+                <div class="profile-page-topbar">
+                    <button type="button" class="btn btn-secondary" onclick="switchPage('employees')">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Employee Directory
+                    </button>
+                </div>
+                <div id="empProfilePageContent">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- EMPLOYEE DIRECTORY SELECTION MODAL -->
+    <div id="empModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-group text-teal"></i> Select Training Attendees (<span id="empCountBadge">0</span>)</h3>
+                <button type="button" class="btn-icon-close" onclick="closeEmployeeModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-filter-bar">
+                <div class="search-box modal-search">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="empSearchInput" placeholder="Search by name, code, designation..." oninput="filterEmployeeModal()">
+                </div>
+                <select id="empDeptFilter" class="custom-select" onchange="filterEmployeeModal()">
+                    <option value="All">All Departments</option>
+                </select>
+                <select id="empStatusFilter" class="custom-select" onchange="filterEmployeeModal()">
+                    <option value="All">All Statuses</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="INACTIVE">INACTIVE</option>
+                </select>
+            </div>
+            <div class="table-responsive modal-table-body">
+                <table class="custom-table">
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="handleTableSort('empModal', 'em_code')">Code <i class="fa-solid fa-sort sort-icon" id="sort-empModal-em_code"></i></th>
+                            <th class="sortable" onclick="handleTableSort('empModal', 'full_name')">Employee Name <i class="fa-solid fa-sort sort-icon" id="sort-empModal-full_name"></i></th>
+                            <th class="sortable" onclick="handleTableSort('empModal', 'des_name')">Designation <i class="fa-solid fa-sort sort-icon" id="sort-empModal-des_name"></i></th>
+                            <th class="sortable" onclick="handleTableSort('empModal', 'dep_name')">Department <i class="fa-solid fa-sort sort-icon" id="sort-empModal-dep_name"></i></th>
+                            <th>Contact Info</th>
+                            <th class="sortable" onclick="handleTableSort('empModal', 'status')">Status <i class="fa-solid fa-sort sort-icon" id="sort-empModal-status"></i></th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="empTableTbody">
+                        <!-- Loaded dynamically via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Modal Pagination Bar -->
+            <div class="pagination-container" style="padding: 12px 24px;">
+                <div class="pagination-info">
+                    <span>Rows:</span>
+                    <select class="custom-select mini-select" onchange="changePageSize('empModal', this.value)">
+                        <option value="10" selected>10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                    <span class="pagination-text">Showing <strong id="empModalPageStart">0</strong>-<strong id="empModalPageEnd">0</strong> of <strong id="empModalTotalCount">0</strong></span>
+                </div>
+                <div class="pagination-controls" id="empModalPaginationControls"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Application Script -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
