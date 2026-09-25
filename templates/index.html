@@ -60,13 +60,19 @@
                 <div class="user-greeting">
                     <div class="avatar-wrapper">
                         <div class="user-avatar-icon">
-                            <i class="fa-solid fa-user-tie"></i>
+                            <i class="fa-solid fa-{% if user_role == 'admin' %}user-tie{% else %}user{% endif %}"></i>
                         </div>
                         <span class="online-indicator"></span>
                     </div>
                     <div class="greeting-text">
                         <h2 id="pageHeading">HR Training Center <span class="wave-emoji">🎓</span></h2>
-                        <span class="status-badge"><i class="fa-solid fa-circle"></i> System Active</span>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span class="status-badge"><i class="fa-solid fa-circle"></i> {{ user_name }}</span>
+                            <span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;letter-spacing:.4px;
+                                background:{% if user_role == 'admin' %}rgba(99,102,241,0.15);color:#a78bfa;border:1px solid rgba(99,102,241,0.3){% else %}rgba(52,211,153,0.12);color:#34d399;border:1px solid rgba(52,211,153,0.25){% endif %}">
+                                {% if user_role == 'admin' %}ADMIN{% else %}USER{% endif %}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
@@ -84,6 +90,10 @@
                     <button class="header-icon-btn" title="Messages">
                         <i class="fa-regular fa-envelope"></i>
                     </button>
+
+                    <a href="/logout" class="header-icon-btn" title="Logout" style="color:#f87171;" onclick="return confirm('Sign out of HR RMS?')">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </a>
                 </div>
             </header>
 
@@ -438,6 +448,13 @@
 
     <!-- Notification Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Session Role (injected by Flask) -->
+    <script>
+        window.HR_USER_ROLE = "{{ user_role }}";
+        window.HR_USER_NAME = "{{ user_name }}";
+        window.HR_EM_CODE   = "{{ em_code }}";
+    </script>
 
     <!-- Application Script -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

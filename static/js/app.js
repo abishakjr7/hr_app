@@ -1,5 +1,7 @@
 // HR RMS Training & Employee Management Frontend Application
 
+const IS_ADMIN = (window.HR_USER_ROLE === 'admin');
+
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Set default current date in date picker input
     setCurrentDateDefault();
@@ -14,7 +16,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4. AI Assistant input handler
     setupAIAssistant();
+
+    // 5. Apply role restrictions for non-admin users
+    applyRoleRestrictions();
 });
+
+// Apply role-based UI restrictions
+function applyRoleRestrictions() {
+    if (IS_ADMIN) return; // Admin sees everything
+
+    // Hide Add Training form panel
+    const addPanel = document.getElementById('addTrainingPanel');
+    if (addPanel) addPanel.style.display = 'none';
+
+    // Hide "Add Training" / action buttons — handled dynamically in renderTrainingsTable
+    // Status toggles hidden dynamically in renderEmployeesTable
+}
+
 
 // Helper: Get & Set Today's ISO Date YYYY-MM-DD
 function setCurrentDateDefault() {
@@ -541,12 +559,13 @@ function renderTable(trainings) {
                         <button class="btn-tbl-action print" onclick="printTraining(${item.id})" title="Print Program Report">
                             <i class="fa-solid fa-print"></i>
                         </button>
+                        ${IS_ADMIN ? `
                         <button class="btn-tbl-action" onclick="editTraining(${item.id})" title="Edit Training">
                             <i class="fa-solid fa-pen-to-square"></i>
                         </button>
                         <button class="btn-tbl-action delete" onclick="deleteTraining(${item.id})" title="Delete Record">
                             <i class="fa-regular fa-trash-can"></i>
-                        </button>
+                        </button>` : ''}
                     </div>
                 </td>
             </tr>
@@ -724,10 +743,11 @@ function renderEmployeePageTable(employees) {
                 <td onclick="event.stopPropagation()">
                     <div class="status-toggle-wrapper">
                         <span class="status-toggle-label" id="tblStatusLabel-${emp.em_code}" style="color: ${isChecked ? '#16a34a' : '#0284c7'};">${escapeHtml(emp.status)}</span>
+                        ${IS_ADMIN ? `
                         <label class="toggle-switch">
                             <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleEmployeeStatus('${escapeHtml(emp.em_code)}', this.checked)">
                             <span class="slider"></span>
-                        </label>
+                        </label>` : ''}
                     </div>
                 </td>
                 <td style="text-align: right;">

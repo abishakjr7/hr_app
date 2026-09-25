@@ -3,7 +3,8 @@ import datetime
 import csv
 import os
 import shutil
-from flask import Flask, render_template, request, jsonify
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE_DIR, "emp_details.csv")
@@ -14,6 +15,20 @@ app = Flask(
     template_folder=os.path.join(BASE_DIR, "templates")
 )
 
+app.secret_key = os.environ.get('SECRET_KEY', 'hr-rms-secret-key-2025-xk9z')
+
+# ---------- Auth Helpers ----------
+ADMIN_EMAIL    = 'admin@rms.com'
+ADMIN_PASSWORD = 'Admin@012'
+ADMIN_EM_CODE  = 'RMS250024'
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_email' not in session:
+            return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return decorated
 
 
 def get_db_path():
@@ -144,9 +159,62 @@ def import_employees_csv():
     finally:
         conn.close()
 
+# ---------- Auth Routes ----------
+@app.route('/login', methods=['GET', 'POST'])
+def login_page():
+    if 'user_email' in session:
+        return redirect(url_for('index'))
+
+    error = None
+    username_val = ''
+
+    if request.method == 'POST':
+        email    = (request.form.get('username') or '').strip().lower()
+        password = (request.form.get('password') or '').strip()
+        username_val = email
+
+        # --- Admin login ---
+        if email == ADMIN_EMAIL.lower() and password == ADMIN_PASSWORD:
+            session['user_email'] = ADMIN_EMAIL
+            session['user_role']  = 'admin'
+            session['user_name']  = 'HR Admin'
+            session['em_code']    = ADMIN_EM_CODE
+            return redirect(url_for('index'))
+
+        # --- Employee login: email + em_code as password ---
+        conn = get_db_connection()
+        emp = conn.execute(
+            'SELECT * FROM employees WHERE LOWER(em_email) = ?', (email,)
+        ).fetchone()
+        conn.close()
+
+        if emp and password == emp['em_code']:
+            session['user_email'] = emp['em_email']
+            session['user_role']  = 'user'
+            session['user_name']  = emp['full_name']
+            session['em_code']    = emp['em_code']
+            return redirect(url_for('index'))
+
+        error = 'Invalid email or password. Please try again.'
+
+    return render_template('login.html', error=error, username=username_val)
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login_page'))
+
+
 @app.route('/')
+@login_required
 def index():
-    return render_template('index.html')
+    return render_template(
+        'index.html',
+        user_name=session.get('user_name', 'User'),
+        user_role=session.get('user_role', 'user'),
+        em_code=session.get('em_code', '')
+    )
 
 @app.route('/api/employees', methods=['GET'])
 def get_employees():
