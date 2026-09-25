@@ -24,8 +24,10 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="#" id="navDashboard" class="nav-item" title="Dashboard" onclick="switchPage('dashboard', event)">
+                <!-- Active Page: Dashboard Home -->
+                <a href="#" id="navDashboard" class="nav-item active" title="Dashboard" onclick="switchPage('dashboard', event)">
                     <i class="fa-solid fa-house"></i>
+                    <span class="active-indicator"></span>
                 </a>
                 <a href="#" id="navEmployees" class="nav-item" title="Employees" onclick="switchPage('employees', event)">
                     <i class="fa-solid fa-user-group"></i>
@@ -36,10 +38,8 @@
                 <a href="#" id="navPayroll" class="nav-item" title="Payroll" onclick="switchPage('payroll', event)">
                     <i class="fa-solid fa-file-invoice-dollar"></i>
                 </a>
-                <!-- Active Page: Training -->
-                <a href="#" id="navTraining" class="nav-item active" title="Training & Learning" onclick="switchPage('training', event)">
+                <a href="#" id="navTraining" class="nav-item" title="Training & Learning" onclick="switchPage('training', event)">
                     <i class="fa-solid fa-graduation-cap"></i>
-                    <span class="active-indicator"></span>
                 </a>
                 <a href="#" id="navHelpdesk" class="nav-item" title="Support Helpdesk" onclick="switchPage('helpdesk', event)">
                     <i class="fa-solid fa-headset"></i>
@@ -65,7 +65,7 @@
                         <span class="online-indicator"></span>
                     </div>
                     <div class="greeting-text">
-                        <h2 id="pageHeading">HR Training Center <span class="wave-emoji">🎓</span></h2>
+                        <h2 id="pageHeading">Dashboard Overview <span class="wave-emoji">📊</span></h2>
                         <div style="display:flex;align-items:center;gap:8px;">
                             <span class="status-badge"><i class="fa-solid fa-circle"></i> {{ user_name }}</span>
                             <span style="font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;letter-spacing:.4px;
@@ -98,7 +98,7 @@
             </header>
 
             <!-- PAGE VIEW 1: TRAINING DASHBOARD -->
-            <div id="trainingView" class="page-view">
+            <div id="trainingView" class="page-view hidden">
                 <div class="dashboard-grid">
                     <!-- Left Main Content Column -->
                     <div class="grid-primary">
@@ -387,7 +387,7 @@
             </div>
 
             <!-- PAGE VIEW 4: DASHBOARD -->
-            <div id="dashboardView" class="page-view hidden">
+            <div id="dashboardView" class="page-view">
                 <div class="metrics-grid">
                     <div class="metric-card" style="background: linear-gradient(135deg, #00a884 0%, #0284c7 100%); color: white; border: none;">
                         <div class="metric-header">

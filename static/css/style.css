@@ -256,6 +256,83 @@ html, body {
     box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.15);
 }
 
+/* ── UNIFIED CUSTOM DROPDOWN SELECT STYLING ── */
+select,
+.custom-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-color: #ffffff;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2300a884' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 14px;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 8px 36px 8px 14px;
+    font-family: var(--font-primary);
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--color-text-main);
+    cursor: pointer;
+    outline: none;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+select:hover,
+.custom-select:hover {
+    border-color: var(--color-primary);
+    background-color: #fafafa;
+    box-shadow: 0 3px 10px rgba(0, 168, 132, 0.08);
+}
+
+select:focus,
+.custom-select:focus {
+    border-color: var(--color-primary);
+    background-color: #ffffff;
+    box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.15);
+}
+
+/* Option items inside dropdown list */
+select option,
+.custom-select option {
+    background-color: #ffffff;
+    color: var(--color-text-main);
+    padding: 10px 14px;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+/* Filter Dropdown Wrapper with Leading Icon */
+.filter-dropdown-wrapper {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.filter-dropdown-wrapper .filter-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--color-primary);
+    font-size: 0.85rem;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.filter-dropdown-wrapper select,
+.filter-dropdown-wrapper .custom-select {
+    padding-left: 36px !important;
+}
+
+/* Mini select for pagination footer */
+.mini-select {
+    padding: 4px 28px 4px 10px !important;
+    font-size: 0.8rem !important;
+    border-radius: 6px !important;
+    background-position: right 8px center !important;
+}
+
 .header-icon-btn {
     width: 38px;
     height: 38px;
