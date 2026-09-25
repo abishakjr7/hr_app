@@ -31,6 +31,83 @@ def login_required(f):
     return decorated
 
 
+import urllib.parse
+import ssl
+
+class PgCursorWrapper:
+    def __init__(self, cursor):
+        self.cursor = cursor
+        self.lastrowid = None
+
+    def _convert_query(self, query):
+        query = query.replace('?', '%s')
+        if 'INSERT OR REPLACE INTO employees' in query:
+            update_clause = '''
+            ON CONFLICT (em_code) DO UPDATE SET
+            first_name = EXCLUDED.first_name, last_name = EXCLUDED.last_name, full_name = EXCLUDED.full_name,
+            em_email = EXCLUDED.em_email, em_pan_no = EXCLUDED.em_pan_no, em_pf_no = EXCLUDED.em_pf_no,
+            em_uan = EXCLUDED.em_uan, em_esi_no = EXCLUDED.em_esi_no, em_role = EXCLUDED.em_role,
+            status = EXCLUDED.status, em_gender = EXCLUDED.em_gender, em_phone = EXCLUDED.em_phone,
+            em_birthday = EXCLUDED.em_birthday, em_blood_group = EXCLUDED.em_blood_group,
+            em_joining_date = EXCLUDED.em_joining_date, des_name = EXCLUDED.des_name, dep_name = EXCLUDED.dep_name
+            '''
+            query = query.replace('INSERT OR REPLACE INTO employees', 'INSERT INTO employees')
+            if 'ON CONFLICT' not in query:
+                query = query + update_clause
+        query = query.replace('INTEGER PRIMARY KEY AUTOINCREMENT', 'SERIAL PRIMARY KEY')
+        return query
+
+    def execute(self, query, params=None):
+        sql = self._convert_query(query)
+        if 'INSERT INTO trainings' in sql and 'RETURNING id' not in sql:
+            sql += ' RETURNING id'
+        if params is None:
+            params = ()
+        self.cursor.execute(sql, params)
+        if 'RETURNING id' in sql:
+            res = self.cursor.fetchone()
+            if res:
+                self.lastrowid = res[0]
+        return self
+
+    def fetchone(self):
+        res = self.cursor.fetchone()
+        if not res:
+            return None
+        if hasattr(self.cursor, 'description') and self.cursor.description:
+            colnames = [col[0] for col in self.cursor.description]
+            return dict(zip(colnames, res))
+        return res
+
+    def fetchall(self):
+        rows = self.cursor.fetchall()
+        if not rows:
+            return []
+        if hasattr(self.cursor, 'description') and self.cursor.description:
+            colnames = [col[0] for col in self.cursor.description]
+            return [dict(zip(colnames, r)) for r in rows]
+        return rows
+
+
+class PgConnWrapper:
+    def __init__(self, conn):
+        self.conn = conn
+
+    def cursor(self):
+        return PgCursorWrapper(self.conn.cursor())
+
+    def execute(self, query, params=None):
+        cur = self.cursor()
+        cur.execute(query, params)
+        return cur
+
+    def commit(self):
+        self.conn.commit()
+
+    def close(self):
+        self.conn.close()
+
+
 def get_db_path():
     # If running in Vercel or serverless environment, use /tmp for writable SQLite DB
     if os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
@@ -46,6 +123,30 @@ def get_db_path():
     return os.path.join(BASE_DIR, "hr_app.db")
 
 def get_db_connection():
+    db_url = os.environ.get("POSTGRES_URL") or os.environ.get("DATABASE_URL")
+    if db_url:
+        try:
+            import pg8000
+            if db_url.startswith("postgres://"):
+                db_url = db_url.replace("postgres://", "postgresql://", 1)
+            
+            parsed = urllib.parse.urlparse(db_url)
+            ssl_ctx = ssl.create_default_context()
+            ssl_ctx.check_hostname = False
+            ssl_ctx.verify_mode = ssl.CERT_NONE
+
+            conn = pg8000.connect(
+                user=parsed.username,
+                password=parsed.password,
+                host=parsed.hostname,
+                port=parsed.port or 5432,
+                database=parsed.path.lstrip('/'),
+                ssl_context=ssl_ctx
+            )
+            return PgConnWrapper(conn)
+        except Exception as e:
+            print(f"Postgres connection error: {e}, falling back to SQLite")
+
     db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -426,9 +527,9 @@ def get_stats():
     cursor = conn.cursor()
     
     total = cursor.execute('SELECT COUNT(*) FROM trainings').fetchone()[0]
-    in_progress = cursor.execute('SELECT COUNT(*) FROM trainings WHERE status = "In Progress"').fetchone()[0]
-    completed = cursor.execute('SELECT COUNT(*) FROM trainings WHERE status = "Completed"').fetchone()[0]
-    upcoming = cursor.execute('SELECT COUNT(*) FROM trainings WHERE status = "Upcoming"').fetchone()[0]
+    in_progress = cursor.execute("SELECT COUNT(*) FROM trainings WHERE status = 'In Progress'").fetchone()[0]
+    completed = cursor.execute("SELECT COUNT(*) FROM trainings WHERE status = 'Completed'").fetchone()[0]
+    upcoming = cursor.execute("SELECT COUNT(*) FROM trainings WHERE status = 'Upcoming'").fetchone()[0]
     
     total_hours = cursor.execute('SELECT SUM(hours_completed) FROM trainings').fetchone()[0] or 0.0
     total_target_hours = cursor.execute('SELECT SUM(program_duration) FROM trainings').fetchone()[0] or 0.0
