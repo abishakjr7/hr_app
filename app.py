@@ -196,6 +196,47 @@ def init_db():
         )
     ''')
     
+    # Create leave_requests table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS leave_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            em_code TEXT NOT NULL,
+            leave_type TEXT NOT NULL,
+            duration REAL NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create helpdesk_tickets table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS helpdesk_tickets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            em_code TEXT NOT NULL,
+            priority TEXT NOT NULL,
+            subject TEXT NOT NULL,
+            description TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Open',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create payroll table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS payroll (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            em_code TEXT NOT NULL,
+            month TEXT NOT NULL,
+            gross REAL NOT NULL,
+            deductions REAL NOT NULL,
+            net_pay REAL NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Paid',
+            processed_date TEXT NOT NULL
+        )
+    ''')
+    
     conn.commit()
     conn.close()
     
@@ -520,6 +561,95 @@ def delete_training(training_id):
     conn.commit()
     conn.close()
     return jsonify({'message': 'Training deleted successfully'})
+
+# --- Leaves API ---
+@app.route('/api/leaves', methods=['GET'])
+def get_leaves():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = '''
+        SELECT l.*, e.full_name, e.first_name, e.last_name 
+        FROM leave_requests l 
+        LEFT JOIN employees e ON l.em_code = e.em_code 
+        ORDER BY l.id DESC
+    '''
+    rows = cursor.execute(query).fetchall()
+    conn.close()
+    return jsonify([dict(row) for row in rows])
+
+@app.route('/api/leaves', methods=['POST'])
+def add_leave():
+    data = request.json or {}
+    em_code = session.get('em_code', 'RMS250024')
+    leave_type = data.get('leave_type', 'Casual Leave')
+    duration = float(data.get('duration', 1))
+    start_date = data.get('start_date', datetime.date.today().strftime('%Y-%m-%d'))
+    end_date = data.get('end_date', start_date)
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'INSERT INTO leave_requests (em_code, leave_type, duration, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
+        (em_code, leave_type, duration, start_date, end_date)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Leave request submitted successfully'}), 201
+
+@app.route('/api/leaves/<int:leave_id>/status', methods=['PUT'])
+def update_leave_status(leave_id):
+    data = request.json or {}
+    new_status = data.get('status', 'Approved')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE leave_requests SET status = ? WHERE id = ?', (new_status, leave_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': f'Leave status updated to {new_status}'})
+
+# --- Tickets API ---
+@app.route('/api/tickets', methods=['GET'])
+def get_tickets():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = '''
+        SELECT t.*, e.full_name, e.first_name, e.last_name 
+        FROM helpdesk_tickets t 
+        LEFT JOIN employees e ON t.em_code = e.em_code 
+        ORDER BY t.id DESC
+    '''
+    rows = cursor.execute(query).fetchall()
+    conn.close()
+    return jsonify([dict(row) for row in rows])
+
+@app.route('/api/tickets', methods=['POST'])
+def add_ticket():
+    data = request.json or {}
+    em_code = session.get('em_code', 'RMS250024')
+    priority = data.get('priority', 'Low')
+    subject = data.get('subject', '')
+    description = data.get('description', '')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'INSERT INTO helpdesk_tickets (em_code, priority, subject, description) VALUES (?, ?, ?, ?)',
+        (em_code, priority, subject, description)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({'message': 'Ticket submitted successfully'}), 201
+
+@app.route('/api/tickets/<int:ticket_id>/status', methods=['PUT'])
+def update_ticket_status(ticket_id):
+    data = request.json or {}
+    new_status = data.get('status', 'Resolved')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('UPDATE helpdesk_tickets SET status = ? WHERE id = ?', (new_status, ticket_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'message': f'Ticket status updated to {new_status}'})
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():

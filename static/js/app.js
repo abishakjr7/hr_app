@@ -394,10 +394,12 @@ function switchPage(page, event) {
         if (pageHeading) pageHeading.innerHTML = `Dashboard Overview <span class="wave-emoji">📊</span>`;
     } else if (page === 'attendance') {
         if (pageHeading) pageHeading.innerHTML = `Attendance & Leave <span class="wave-emoji">📅</span>`;
+        loadLeaves();
     } else if (page === 'payroll') {
         if (pageHeading) pageHeading.innerHTML = `Payroll Management <span class="wave-emoji">💰</span>`;
     } else if (page === 'helpdesk') {
         if (pageHeading) pageHeading.innerHTML = `Support Helpdesk <span class="wave-emoji">🎧</span>`;
+        loadTickets();
     } else if (page === 'analytics') {
         if (pageHeading) pageHeading.innerHTML = `Analytics & Workforce <span class="wave-emoji">📈</span>`;
     } else if (page === 'settings') {
@@ -409,6 +411,112 @@ function switchPage(page, event) {
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// FETCH & RENDER LEAVES
+async function loadLeaves() {
+    try {
+        const response = await fetch('/api/leaves');
+        if (!response.ok) return;
+        const leaves = await response.json();
+        
+        const tbody = document.querySelector('#attendanceView .custom-table tbody');
+        if (!tbody) return;
+        
+        if (leaves.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">No leave requests found.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = leaves.map(l => {
+            const initials = getInitials(l.full_name || 'User');
+            let badgeClass = 'badge-upcoming';
+            if (l.status === 'Approved') badgeClass = 'badge-completed';
+            else if (l.status === 'Pending') badgeClass = 'badge-in-progress';
+            
+            return `
+                <tr>
+                    <td><div class="faculty-pill"><div class="faculty-avatar-icon">${initials}</div><strong>${escapeHtml(l.full_name || 'Unknown')}</strong></div></td>
+                    <td><span class="attendee-tag">${escapeHtml(l.leave_type)}</span></td>
+                    <td>${l.duration} Day(s)</td>
+                    <td>${escapeHtml(l.start_date)} to ${escapeHtml(l.end_date)}</td>
+                    <td><span class="badge ${badgeClass}">${escapeHtml(l.status)}</span></td>
+                    <td style="text-align: right;">
+                        <button class="btn-tbl-action" style="color:#16a34a;" onclick="updateLeaveStatus(${l.id}, 'Approved')"><i class="fa-solid fa-check"></i></button> 
+                        <button class="btn-tbl-action delete" onclick="updateLeaveStatus(${l.id}, 'Rejected')"><i class="fa-solid fa-xmark"></i></button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) { console.error('Error loading leaves:', e); }
+}
+
+async function updateLeaveStatus(id, status) {
+    try {
+        const res = await fetch(`/api/leaves/${id}/status`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status})
+        });
+        if(res.ok) { showToast(`Leave ${status}`); loadLeaves(); }
+    } catch(e) {}
+}
+
+// FETCH & RENDER TICKETS
+async function loadTickets() {
+    try {
+        const response = await fetch('/api/tickets');
+        if (!response.ok) return;
+        const tickets = await response.json();
+        
+        // This is a simple implementation rendering them as a list inside the helpdeskView container
+        const container = document.querySelector('#helpdeskView .section-card > div:last-child');
+        if (!container) return;
+        
+        container.innerHTML = '<div style="display:flex;flex-direction:column;gap:12px;width:100%;">';
+        
+        if (tickets.length === 0) {
+            container.innerHTML += '<p style="text-align:center;color:#94a3b8;padding:20px;">No support tickets found.</p>';
+        } else {
+            container.innerHTML += tickets.map(t => {
+                const initials = getInitials(t.full_name || 'User');
+                let prioColor = t.priority === 'High' ? '#ef4444' : (t.priority === 'Medium' ? '#d97706' : '#0284c7');
+                let prioBg = t.priority === 'High' ? '#fee2e2' : (t.priority === 'Medium' ? '#fef3c7' : '#e0f2fe');
+                
+                return `
+                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                                <span class="badge" style="background:${prioBg};color:${prioColor};">${escapeHtml(t.priority)}</span>
+                                <span style="font-size:12px; color:#94a3b8;">Status: <strong>${escapeHtml(t.status)}</strong></span>
+                            </div>
+                            <h5 style="font-size: 15px; margin-bottom: 4px;">${escapeHtml(t.subject)}</h5>
+                            <p style="font-size: 13px; color: #64748b; margin-bottom: 8px;">${escapeHtml(t.description)}</p>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div class="faculty-avatar-icon" style="width:24px;height:24px;font-size:10px;">${initials}</div>
+                                <span style="font-size:12px; font-weight:600;">${escapeHtml(t.full_name || 'Unknown')}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            ${t.status !== 'Resolved' ? `<button class="btn btn-primary" onclick="updateTicketStatus(${t.id}, 'Resolved')"><i class="fa-solid fa-check"></i> Mark Resolved</button>` : `<span style="color:#16a34a;font-weight:600;"><i class="fa-solid fa-check-circle"></i> Resolved</span>`}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        container.innerHTML += '</div>';
+    } catch (e) { console.error('Error loading tickets:', e); }
+}
+
+async function updateTicketStatus(id, status) {
+    try {
+        const res = await fetch(`/api/tickets/${id}/status`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status})
+        });
+        if(res.ok) { showToast(`Ticket marked as ${status}`); loadTickets(); }
+    } catch(e) {}
 }
 
 // Load Summary Stats
