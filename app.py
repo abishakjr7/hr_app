@@ -243,6 +243,92 @@ def init_db():
     # Import CSV data into SQLite DB
     import_employees_csv()
 
+    # Seed initial sample data for trainings, leaves, tickets, payroll if empty
+    seed_initial_data()
+
+def seed_initial_data():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Get sample employee codes
+    rows = cursor.execute("SELECT em_code, full_name FROM employees LIMIT 10").fetchall()
+    emp_list = [dict(r) for r in rows]
+    if not emp_list:
+        conn.close()
+        return
+
+    emp1 = emp_list[0]['em_code']
+    emp2 = emp_list[1]['em_code'] if len(emp_list) > 1 else emp1
+    emp3 = emp_list[2]['em_code'] if len(emp_list) > 2 else emp1
+
+    # Seed Trainings if empty
+    cnt_trainings = cursor.execute("SELECT COUNT(*) FROM trainings").fetchone()[0]
+    if cnt_trainings == 0:
+        sample_trainings = [
+            ('2025-10-01', 'Advanced Python & Data Architecture', 'Dr. Aris Thorne', 40.0, 32.0, 'Sarah Jenkins, John Doe, Rita K.', 'In Progress', 'Deep dive into async patterns & Postgres optimization'),
+            ('2025-09-15', 'Corporate Cyber Security & Compliance', 'Marcus Vance', 20.0, 20.0, 'Alex M., Rita K., Michael Chen', 'Completed', 'Mandatory ISO27001 compliance and phishing prevention'),
+            ('2025-10-10', 'Agile Leadership & Scrum Essentials', 'Elena Rostova', 15.0, 0.0, 'John Doe, Sarah Jenkins', 'Upcoming', 'Interactive workshop on Sprint planning & retrospective'),
+            ('2025-08-20', 'UI/UX Design Systems & Micro-Interactions', 'Clara Oswald', 30.0, 30.0, 'Rita K., Alex M.', 'Completed', 'Figma components and dynamic CSS animations'),
+            ('2025-10-05', 'Cloud Infrastructure & DevOps Best Practices', 'David Kim', 25.0, 10.0, 'Sarah Jenkins, Marcus Vance', 'In Progress', 'AWS Lambda, Docker containers, and CI/CD pipelines')
+        ]
+        for t in sample_trainings:
+            cursor.execute('''
+                INSERT INTO trainings (date, topic, faculty, program_duration, hours_completed, attendees, status, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', t)
+
+    # Seed Leave Requests if < 4
+    cnt_leaves = cursor.execute("SELECT COUNT(*) FROM leave_requests").fetchone()[0]
+    if cnt_leaves < 4:
+        sample_leaves = [
+            (emp1, 'Sick Leave', 2.0, '2025-10-12', '2025-10-13', 'Pending'),
+            (emp2, 'Casual Leave', 1.0, '2025-10-15', '2025-10-15', 'Approved'),
+            (emp3, 'Earned Leave', 5.0, '2025-11-01', '2025-11-05', 'Approved'),
+            (emp1, 'Maternity/Paternity Leave', 3.0, '2025-10-20', '2025-10-22', 'Rejected')
+        ]
+        for l in sample_leaves:
+            cursor.execute('''
+                INSERT INTO leave_requests (em_code, leave_type, duration, start_date, end_date, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', l)
+
+    # Seed Helpdesk Tickets if < 4
+    cnt_tickets = cursor.execute("SELECT COUNT(*) FROM helpdesk_tickets").fetchone()[0]
+    if cnt_tickets < 4:
+        sample_tickets = [
+            (emp1, 'High', 'Tax Deduction Clarification (TDS)', 'Need detailed breakdown of TDS deduction for September paycheck.', 'Open'),
+            (emp2, 'Low', 'Replacement Access ID Badge', 'My physical RFID access card was misplaced yesterday.', 'Open'),
+            (emp3, 'Medium', 'Developer Workstation Upgrade', 'RAM upgrade required for running multi-container local dev server.', 'In Progress'),
+            (emp1, 'Low', 'PF Account UAN Transfer', 'Transfer request from previous employer UAN number to current entity.', 'Resolved')
+        ]
+        for tk in sample_tickets:
+            cursor.execute('''
+                INSERT INTO helpdesk_tickets (em_code, priority, subject, description, status)
+                VALUES (?, ?, ?, ?, ?)
+            ''', tk)
+
+    # Seed Payroll if empty
+    cnt_payroll = cursor.execute("SELECT COUNT(*) FROM payroll").fetchone()[0]
+    if cnt_payroll == 0:
+        sample_payroll = [
+            (emp1, 'September 2025', 84500.0, 12300.0, 72200.0, 'Paid', '2025-10-01'),
+            (emp2, 'September 2025', 92000.0, 13500.0, 78500.0, 'Paid', '2025-10-01'),
+            (emp3, 'September 2025', 68000.0, 9200.0, 58800.0, 'Paid', '2025-10-01'),
+            (emp1, 'August 2025', 84500.0, 12300.0, 72200.0, 'Paid', '2025-09-01'),
+            (emp2, 'August 2025', 92000.0, 13500.0, 78500.0, 'Paid', '2025-09-01'),
+            (emp3, 'August 2025', 68000.0, 9200.0, 58800.0, 'Paid', '2025-09-01'),
+            (emp1, 'July 2025', 82100.0, 11800.0, 70300.0, 'Paid', '2025-08-01')
+        ]
+        for p in sample_payroll:
+            cursor.execute('''
+                INSERT INTO payroll (em_code, month, gross, deductions, net_pay, status, processed_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', p)
+
+    conn.commit()
+    conn.close()
+
+
 def import_employees_csv():
     if not os.path.exists(CSV_PATH):
         print(f"CSV file not found at {CSV_PATH}")
@@ -678,6 +764,247 @@ def get_stats():
         'completion_rate': completion_rate,
         'total_employees': total_emp
     })
+
+# --- Dashboard Overview Stats API ---
+@app.route('/api/dashboard_stats', methods=['GET'])
+def get_dashboard_overview():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    total_headcount = cursor.execute("SELECT COUNT(*) FROM employees").fetchone()[0]
+    active_employees = cursor.execute("SELECT COUNT(*) FROM employees WHERE status = 'ACTIVE'").fetchone()[0]
+    on_leave_today = cursor.execute("SELECT COUNT(*) FROM leave_requests WHERE status = 'Approved'").fetchone()[0]
+    open_tickets = cursor.execute("SELECT COUNT(*) FROM helpdesk_tickets WHERE status IN ('Open', 'In Progress')").fetchone()[0]
+    high_priority_tickets = cursor.execute("SELECT COUNT(*) FROM helpdesk_tickets WHERE priority = 'High' AND status != 'Resolved'").fetchone()[0]
+    pending_approvals = cursor.execute("SELECT COUNT(*) FROM leave_requests WHERE status = 'Pending'").fetchone()[0]
+
+    # Department breakdown for workforce chart
+    dept_rows = cursor.execute('''
+        SELECT dep_name, COUNT(*) as count 
+        FROM employees 
+        WHERE dep_name != '' 
+        GROUP BY dep_name 
+        ORDER BY count DESC 
+        LIMIT 6
+    ''').fetchall()
+    dept_stats = [dict(r) for r in dept_rows]
+
+    # Recent activity stream
+    recent_leaves = cursor.execute('''
+        SELECT l.id, 'leave' as type, l.leave_type as title, l.status, l.created_at, e.full_name 
+        FROM leave_requests l 
+        LEFT JOIN employees e ON l.em_code = e.em_code 
+        ORDER BY l.id DESC LIMIT 3
+    ''').fetchall()
+
+    recent_tickets = cursor.execute('''
+        SELECT t.id, 'ticket' as type, t.subject as title, t.status, t.created_at, e.full_name 
+        FROM helpdesk_tickets t 
+        LEFT JOIN employees e ON t.em_code = e.em_code 
+        ORDER BY t.id DESC LIMIT 3
+    ''').fetchall()
+
+    recent_trainings = cursor.execute('''
+        SELECT id, 'training' as type, topic as title, status, created_at, faculty as full_name 
+        FROM trainings 
+        ORDER BY id DESC LIMIT 3
+    ''').fetchall()
+
+    activities = []
+    for r in recent_leaves:
+        activities.append({
+            'icon': 'fa-plane', 'color': '#d97706', 'bg': '#fef3c7',
+            'title': f"Leave Request ({dict(r)['title']})",
+            'sub': f"{dict(r)['full_name'] or 'Employee'} - Status: {dict(r)['status']}"
+        })
+    for r in recent_tickets:
+        activities.append({
+            'icon': 'fa-headset', 'color': '#0284c7', 'bg': '#e0f2fe',
+            'title': f"Ticket: {dict(r)['title']}",
+            'sub': f"Raised by {dict(r)['full_name'] or 'User'} - {dict(r)['status']}"
+        })
+    for r in recent_trainings:
+        activities.append({
+            'icon': 'fa-graduation-cap', 'color': '#16a34a', 'bg': '#dcfce7',
+            'title': f"Training: {dict(r)['title']}",
+            'sub': f"Faculty: {dict(r)['full_name']} - {dict(r)['status']}"
+        })
+
+    conn.close()
+
+    return jsonify({
+        'total_headcount': total_headcount,
+        'active_employees': active_employees,
+        'on_leave_today': on_leave_today,
+        'open_tickets': open_tickets,
+        'high_priority_tickets': high_priority_tickets,
+        'pending_approvals': pending_approvals,
+        'departments': dept_stats,
+        'recent_activities': activities[:6]
+    })
+
+# --- Payroll API ---
+@app.route('/api/payroll', methods=['GET'])
+def get_payroll():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = '''
+        SELECT p.*, e.full_name, e.des_name, e.dep_name 
+        FROM payroll p 
+        LEFT JOIN employees e ON p.em_code = e.em_code 
+        ORDER BY p.id DESC
+    '''
+    rows = cursor.execute(query).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/payroll/run', methods=['POST'])
+def run_payroll():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    month_name = datetime.date.today().strftime('%B %Y')
+    emp_rows = cursor.execute("SELECT em_code FROM employees WHERE status = 'ACTIVE'").fetchall()
+    
+    processed_count = 0
+    for emp in emp_rows:
+        em_code = emp['em_code']
+        existing = cursor.execute("SELECT id FROM payroll WHERE em_code = ? AND month = ?", (em_code, month_name)).fetchone()
+        if not existing:
+            gross = 75000.0
+            deductions = 10500.0
+            net = gross - deductions
+            today_str = datetime.date.today().strftime('%Y-%m-%d')
+            cursor.execute('''
+                INSERT INTO payroll (em_code, month, gross, deductions, net_pay, status, processed_date)
+                VALUES (?, ?, ?, ?, ?, 'Paid', ?)
+            ''', (em_code, month_name, gross, deductions, net, today_str))
+            processed_count += 1
+            
+    conn.commit()
+    conn.close()
+    return jsonify({'message': f'Payroll successfully processed for {processed_count} active employees for {month_name}'})
+
+# --- Analytics API ---
+@app.route('/api/analytics', methods=['GET'])
+def get_analytics():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    total_emp = cursor.execute("SELECT COUNT(*) FROM employees").fetchone()[0] or 1
+
+    # Department breakdown
+    dept_rows = cursor.execute('''
+        SELECT dep_name, COUNT(*) as count 
+        FROM employees 
+        WHERE dep_name != '' 
+        GROUP BY dep_name 
+        ORDER BY count DESC
+    ''').fetchall()
+
+    departments = []
+    colors = ['#0284c7', '#00a884', '#a855f7', '#ea580c', '#ec4899', '#6366f1', '#14b8a6']
+    for idx, r in enumerate(dept_rows):
+        cnt = r['count']
+        pct = round((cnt / total_emp) * 100, 1)
+        departments.append({
+            'name': r['dep_name'],
+            'count': cnt,
+            'percentage': pct,
+            'color': colors[idx % len(colors)]
+        })
+
+    # Gender breakdown
+    gender_rows = cursor.execute('''
+        SELECT em_gender, COUNT(*) as count 
+        FROM employees 
+        WHERE em_gender != '' 
+        GROUP BY em_gender 
+        ORDER BY count DESC
+    ''').fetchall()
+
+    gender_data = {}
+    for r in gender_rows:
+        g = r['em_gender'].strip()
+        gender_data[g] = r['count']
+
+    male_cnt = gender_data.get('Male', gender_data.get('MALE', 0))
+    female_cnt = gender_data.get('Female', gender_data.get('FEMALE', 0))
+    other_cnt = total_emp - (male_cnt + female_cnt)
+    if other_cnt < 0: other_cnt = 0
+
+    male_pct = round((male_cnt / total_emp) * 100, 1)
+    female_pct = round((female_cnt / total_emp) * 100, 1)
+    other_pct = round(100.0 - male_pct - female_pct, 1) if total_emp > 0 else 0
+
+    # Status breakdown
+    active_cnt = cursor.execute("SELECT COUNT(*) FROM employees WHERE status = 'ACTIVE'").fetchone()[0]
+    inactive_cnt = total_emp - active_cnt
+
+    conn.close()
+
+    return jsonify({
+        'total_employees': total_emp,
+        'departments': departments,
+        'gender': {
+            'male_count': male_cnt,
+            'female_count': female_cnt,
+            'other_count': other_cnt,
+            'male_pct': male_pct,
+            'female_pct': female_pct,
+            'other_pct': other_pct
+        },
+        'status': {
+            'active_count': active_cnt,
+            'inactive_count': inactive_cnt,
+            'active_pct': round((active_cnt / total_emp) * 100, 1)
+        }
+    })
+
+# --- User Profile API ---
+@app.route('/api/user/profile', methods=['GET', 'PUT'])
+def user_profile():
+    if request.method == 'GET':
+        em_code = session.get('em_code', ADMIN_EM_CODE)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        emp = cursor.execute("SELECT * FROM employees WHERE em_code = ?", (em_code,)).fetchone()
+        conn.close()
+
+        if emp:
+            return jsonify(dict(emp))
+        else:
+            return jsonify({
+                'em_code': session.get('em_code', ADMIN_EM_CODE),
+                'full_name': session.get('user_name', 'HR Admin'),
+                'first_name': 'HR',
+                'last_name': 'Admin',
+                'em_email': session.get('user_email', ADMIN_EMAIL),
+                'em_role': session.get('user_role', 'admin'),
+                'bio': 'System Administrator for HR App.'
+            })
+
+    elif request.method == 'PUT':
+        data = request.json or {}
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+        full_name = f"{first_name} {last_name}".strip()
+        em_code = session.get('em_code', ADMIN_EM_CODE)
+
+        if full_name:
+            session['user_name'] = full_name
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE employees 
+                SET first_name = ?, last_name = ?, full_name = ? 
+                WHERE em_code = ?
+            ''', (first_name, last_name, full_name, em_code))
+            conn.commit()
+            conn.close()
+
+        return jsonify({'message': 'Profile updated successfully', 'user_name': session['user_name']})
+
 
 if __name__ == '__main__':
     init_db()

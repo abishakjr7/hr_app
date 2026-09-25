@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Set default current date in date picker input
     setCurrentDateDefault();
 
-    // 2. Load stats & trainings list
+    // 2. Load overview, stats & trainings list
+    loadDashboardOverview();
     loadDashboardStats();
     loadTrainings();
 
@@ -392,18 +393,22 @@ function switchPage(page, event) {
         loadTrainings();
     } else if (page === 'dashboard') {
         if (pageHeading) pageHeading.innerHTML = `Dashboard Overview <span class="wave-emoji">📊</span>`;
+        loadDashboardOverview();
     } else if (page === 'attendance') {
         if (pageHeading) pageHeading.innerHTML = `Attendance & Leave <span class="wave-emoji">📅</span>`;
         loadLeaves();
     } else if (page === 'payroll') {
         if (pageHeading) pageHeading.innerHTML = `Payroll Management <span class="wave-emoji">💰</span>`;
+        loadPayroll();
     } else if (page === 'helpdesk') {
         if (pageHeading) pageHeading.innerHTML = `Support Helpdesk <span class="wave-emoji">🎧</span>`;
         loadTickets();
     } else if (page === 'analytics') {
         if (pageHeading) pageHeading.innerHTML = `Analytics & Workforce <span class="wave-emoji">📈</span>`;
+        loadAnalytics();
     } else if (page === 'settings') {
         if (pageHeading) pageHeading.innerHTML = `System Settings <span class="wave-emoji">⚙️</span>`;
+        loadProfileSettings();
     }
     
     if (targetView) {
@@ -413,18 +418,85 @@ function switchPage(page, event) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// FETCH & RENDER LEAVES
+// --- 1. Dashboard Overview Handler ---
+async function loadDashboardOverview() {
+    try {
+        const response = await fetch('/api/dashboard_stats');
+        if (!response.ok) return;
+        const stats = await response.json();
+
+        const headcountElem = document.getElementById('dashTotalHeadcount');
+        if (headcountElem) headcountElem.innerText = stats.total_headcount || 0;
+
+        const activeSub = document.getElementById('dashActiveEmpSub');
+        if (activeSub) activeSub.innerText = `${stats.active_employees || 0} Active`;
+
+        const onLeaveElem = document.getElementById('dashOnLeaveToday');
+        if (onLeaveElem) onLeaveElem.innerText = stats.on_leave_today || 0;
+
+        const openTicketsElem = document.getElementById('dashOpenTickets');
+        if (openTicketsElem) openTicketsElem.innerText = stats.open_tickets || 0;
+
+        const highPrioElem = document.getElementById('dashHighPrioTickets');
+        if (highPrioElem) highPrioElem.innerText = `${stats.high_priority_tickets || 0}`;
+
+        const pendingAppElem = document.getElementById('dashPendingApprovals');
+        if (pendingAppElem) pendingAppElem.innerText = stats.pending_approvals || 0;
+
+        const trendContainer = document.getElementById('dashTrendChart');
+        if (trendContainer && stats.departments && stats.departments.length > 0) {
+            const maxCount = Math.max(...stats.departments.map(d => d.count), 1);
+            trendContainer.innerHTML = stats.departments.map((d, i) => {
+                const heightPct = Math.max(20, Math.round((d.count / maxCount) * 100));
+                const colors = ['#0284c7', '#00a884', '#a855f7', '#ea580c', '#ec4899', '#6366f1'];
+                const bg = colors[i % colors.length];
+                return `
+                    <div style="flex:1; background: ${bg}; height: ${heightPct}%; border-radius: 6px 6px 0 0; position:relative; transition: height 0.5s ease;" title="${escapeHtml(d.dep_name)}: ${d.count} staff">
+                        <div style="position:absolute; bottom:100%; left:50%; transform:translateX(-50%); font-size:11px; color:#475569; font-weight:700; white-space:nowrap; margin-bottom:4px;">${d.count}</div>
+                        <div style="position:absolute; top:100%; left:50%; transform:translateX(-50%); font-size:10px; color:#64748b; font-weight:600; white-space:nowrap; margin-top:4px;">${escapeHtml(d.dep_name.split(' ')[0])}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        const actContainer = document.getElementById('dashRecentActivity');
+        if (actContainer && stats.recent_activities) {
+            actContainer.innerHTML = stats.recent_activities.map(a => `
+                <div style="display:flex; gap:12px; align-items:center;">
+                    <div style="width:36px; height:36px; border-radius:50%; background:${a.bg}; color:${a.color}; display:flex; align-items:center; justify-content:center; font-size:14px;"><i class="fa-solid ${a.icon}"></i></div>
+                    <div>
+                        <p style="font-size:13px; font-weight:600; color:#0f172a; margin:0;">${escapeHtml(a.title)}</p>
+                        <p style="font-size:12px; color:#64748b; margin:0;">${escapeHtml(a.sub)}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+    } catch (e) {
+        console.error('Error loading dashboard overview:', e);
+    }
+}
+
+// --- 2. Leave Management Handler & Modal ---
 async function loadLeaves() {
     try {
         const response = await fetch('/api/leaves');
         if (!response.ok) return;
         const leaves = await response.json();
-        
-        const tbody = document.querySelector('#attendanceView .custom-table tbody');
+
+        const tbody = document.getElementById('leaveTbody');
         if (!tbody) return;
-        
+
+        const totalElem = document.getElementById('attTotalLeaves');
+        const approvedElem = document.getElementById('attApprovedLeaves');
+        const pendingElem = document.getElementById('attPendingLeaves');
+
+        if (totalElem) totalElem.innerHTML = `${leaves.length} <small style="font-size:14px;color:#94a3b8;font-weight:400;">requests</small>`;
+        if (approvedElem) approvedElem.innerHTML = `${leaves.filter(l => l.status === 'Approved').length} <small style="font-size:14px;color:#94a3b8;font-weight:400;">requests</small>`;
+        if (pendingElem) pendingElem.innerHTML = `${leaves.filter(l => l.status === 'Pending').length} <small style="font-size:14px;color:#94a3b8;font-weight:400;">requests</small>`;
+
         if (leaves.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:20px;">No leave requests found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:24px;">No leave requests in database.</td></tr>';
             return;
         }
 
@@ -433,7 +505,7 @@ async function loadLeaves() {
             let badgeClass = 'badge-upcoming';
             if (l.status === 'Approved') badgeClass = 'badge-completed';
             else if (l.status === 'Pending') badgeClass = 'badge-in-progress';
-            
+
             return `
                 <tr>
                     <td><div class="faculty-pill"><div class="faculty-avatar-icon">${initials}</div><strong>${escapeHtml(l.full_name || 'Unknown')}</strong></div></td>
@@ -442,8 +514,10 @@ async function loadLeaves() {
                     <td>${escapeHtml(l.start_date)} to ${escapeHtml(l.end_date)}</td>
                     <td><span class="badge ${badgeClass}">${escapeHtml(l.status)}</span></td>
                     <td style="text-align: right;">
-                        <button class="btn-tbl-action" style="color:#16a34a;" onclick="updateLeaveStatus(${l.id}, 'Approved')"><i class="fa-solid fa-check"></i></button> 
-                        <button class="btn-tbl-action delete" onclick="updateLeaveStatus(${l.id}, 'Rejected')"><i class="fa-solid fa-xmark"></i></button>
+                        ${l.status === 'Pending' ? `
+                            <button class="btn-tbl-action" style="color:#16a34a;" onclick="updateLeaveStatus(${l.id}, 'Approved')" title="Approve Request"><i class="fa-solid fa-check"></i></button> 
+                            <button class="btn-tbl-action delete" onclick="updateLeaveStatus(${l.id}, 'Rejected')" title="Reject Request"><i class="fa-solid fa-xmark"></i></button>
+                        ` : `<span style="font-size:12px; color:#94a3b8;">No action</span>`}
                     </td>
                 </tr>
             `;
@@ -458,53 +532,165 @@ async function updateLeaveStatus(id, status) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({status})
         });
-        if(res.ok) { showToast(`Leave ${status}`); loadLeaves(); }
+        if(res.ok) { showToast(`Leave ${status}`); loadLeaves(); loadDashboardOverview(); }
     } catch(e) {}
 }
 
-// FETCH & RENDER TICKETS
+function openApplyLeaveModal() {
+    const modal = document.getElementById('leaveModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeLeaveModal() {
+    const modal = document.getElementById('leaveModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function handleLeaveFormSubmit(event) {
+    event.preventDefault();
+    const leave_type = document.getElementById('leaveType').value;
+    const start_date = document.getElementById('leaveStartDate').value;
+    const end_date = document.getElementById('leaveEndDate').value;
+    const duration = parseFloat(document.getElementById('leaveDuration').value) || 1;
+
+    try {
+        const res = await fetch('/api/leaves', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ leave_type, start_date, end_date, duration })
+        });
+        if (res.ok) {
+            showToast('Leave request submitted successfully!');
+            closeLeaveModal();
+            loadLeaves();
+            loadDashboardOverview();
+        } else {
+            showToast('Failed to submit leave request', 'error');
+        }
+    } catch (e) {
+        showToast('Network error submitting leave request', 'error');
+    }
+}
+
+// --- 3. Payroll Handler ---
+async function loadPayroll() {
+    try {
+        const response = await fetch('/api/payroll');
+        if (!response.ok) return;
+        const payrolls = await response.json();
+
+        const tbody = document.getElementById('payrollTbody');
+        if (!tbody) return;
+
+        if (payrolls.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:24px;">No payroll records found in database.</td></tr>';
+            return;
+        }
+
+        const cycleElem = document.getElementById('payrollCycleMonth');
+        if (cycleElem && payrolls.length > 0) {
+            cycleElem.innerText = payrolls[0].month || 'Current Cycle';
+        }
+
+        tbody.innerHTML = payrolls.map(p => `
+            <tr>
+                <td><strong>${escapeHtml(p.full_name || p.em_code)}</strong><br><small style="color:#64748b;">${escapeHtml(p.des_name || '')}</small></td>
+                <td><strong>${escapeHtml(p.month)}</strong></td>
+                <td>${escapeHtml(p.processed_date)}</td>
+                <td>$${(p.gross || 0).toLocaleString()}</td>
+                <td style="color:#ef4444;">-$${(p.deductions || 0).toLocaleString()}</td>
+                <td style="font-weight:700; color:#0f172a;">$${(p.net_pay || 0).toLocaleString()}</td>
+                <td><span class="badge badge-completed">${escapeHtml(p.status)}</span></td>
+            </tr>
+        `).join('');
+    } catch (e) { console.error('Error loading payroll:', e); }
+}
+
+async function triggerPayrollRun() {
+    try {
+        const res = await fetch('/api/payroll/run', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            showToast(data.message || 'Payroll process complete!');
+            loadPayroll();
+        } else {
+            showToast('Failed to process payroll', 'error');
+        }
+    } catch (e) {
+        showToast('Network error processing payroll', 'error');
+    }
+}
+
+function exportPayrollToExcel() {
+    fetch('/api/payroll').then(r => r.json()).then(payrolls => {
+        if (!payrolls || payrolls.length === 0) {
+            showToast('No payroll data to export', 'warning');
+            return;
+        }
+        const headers = ['Emp Code', 'Employee Name', 'Month', 'Process Date', 'Gross ($)', 'Deductions ($)', 'Net Pay ($)', 'Status'];
+        const rows = payrolls.map(p => [
+            p.em_code, p.full_name || '', p.month, p.processed_date, p.gross, p.deductions, p.net_pay, p.status
+        ]);
+        exportToExcel(headers, rows, `HR_Payroll_${new Date().toISOString().slice(0,10)}.csv`);
+    });
+}
+
+// --- 4. Helpdesk Tickets Handler & Kanban ---
 async function loadTickets() {
     try {
         const response = await fetch('/api/tickets');
         if (!response.ok) return;
         const tickets = await response.json();
-        
-        // This is a simple implementation rendering them as a list inside the helpdeskView container
-        const container = document.querySelector('#helpdeskView .section-card > div:last-child');
-        if (!container) return;
-        
-        container.innerHTML = '<div style="display:flex;flex-direction:column;gap:12px;width:100%;">';
-        
-        if (tickets.length === 0) {
-            container.innerHTML += '<p style="text-align:center;color:#94a3b8;padding:20px;">No support tickets found.</p>';
-        } else {
-            container.innerHTML += tickets.map(t => {
-                const initials = getInitials(t.full_name || 'User');
-                let prioColor = t.priority === 'High' ? '#ef4444' : (t.priority === 'Medium' ? '#d97706' : '#0284c7');
-                let prioBg = t.priority === 'High' ? '#fee2e2' : (t.priority === 'Medium' ? '#fef3c7' : '#e0f2fe');
-                
-                return `
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                                <span class="badge" style="background:${prioBg};color:${prioColor};">${escapeHtml(t.priority)}</span>
-                                <span style="font-size:12px; color:#94a3b8;">Status: <strong>${escapeHtml(t.status)}</strong></span>
-                            </div>
-                            <h5 style="font-size: 15px; margin-bottom: 4px;">${escapeHtml(t.subject)}</h5>
-                            <p style="font-size: 13px; color: #64748b; margin-bottom: 8px;">${escapeHtml(t.description)}</p>
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <div class="faculty-avatar-icon" style="width:24px;height:24px;font-size:10px;">${initials}</div>
-                                <span style="font-size:12px; font-weight:600;">${escapeHtml(t.full_name || 'Unknown')}</span>
-                            </div>
+
+        const openCol = document.getElementById('kanbanOpen');
+        const inProgressCol = document.getElementById('kanbanInProgress');
+        const resolvedCol = document.getElementById('kanbanResolved');
+
+        if (!openCol || !inProgressCol || !resolvedCol) return;
+
+        const openTickets = tickets.filter(t => t.status === 'Open');
+        const inProgressTickets = tickets.filter(t => t.status === 'In Progress');
+        const resolvedTickets = tickets.filter(t => t.status === 'Resolved');
+
+        const openBadge = document.getElementById('ticketOpenBadge');
+        const inProgBadge = document.getElementById('ticketInProgressBadge');
+        const resBadge = document.getElementById('ticketResolvedBadge');
+
+        if (openBadge) openBadge.innerText = openTickets.length;
+        if (inProgBadge) inProgBadge.innerText = inProgressTickets.length;
+        if (resBadge) resBadge.innerText = resolvedTickets.length;
+
+        const renderCard = (t) => {
+            const initials = getInitials(t.full_name || 'User');
+            let prioColor = t.priority === 'High' ? '#ef4444' : (t.priority === 'Medium' ? '#d97706' : '#0284c7');
+            let prioBg = t.priority === 'High' ? '#fee2e2' : (t.priority === 'Medium' ? '#fef3c7' : '#e0f2fe');
+
+            return `
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+                        <span class="badge" style="background:${prioBg};color:${prioColor};">${escapeHtml(t.priority)}</span>
+                        <span style="font-size:11px; color:#94a3b8;">#TK-${t.id}</span>
+                    </div>
+                    <h5 style="font-size: 14px; font-weight:700; color:#0f172a; margin-bottom: 4px;">${escapeHtml(t.subject)}</h5>
+                    <p style="font-size: 12px; color: #64748b; margin-bottom: 12px; line-height:1.4;">${escapeHtml(t.description)}</p>
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <div class="faculty-avatar-icon" style="width:24px;height:24px;font-size:10px;">${initials}</div>
+                            <span style="font-size:12px; font-weight:600; color:#334155;">${escapeHtml(t.full_name || 'Employee')}</span>
                         </div>
-                        <div style="display:flex;gap:8px;">
-                            ${t.status !== 'Resolved' ? `<button class="btn btn-primary" onclick="updateTicketStatus(${t.id}, 'Resolved')"><i class="fa-solid fa-check"></i> Mark Resolved</button>` : `<span style="color:#16a34a;font-weight:600;"><i class="fa-solid fa-check-circle"></i> Resolved</span>`}
+                        <div style="display:flex; gap:4px;">
+                            ${t.status === 'Open' ? `<button class="btn-tbl-action" onclick="updateTicketStatus(${t.id}, 'In Progress')" title="Move to In Progress"><i class="fa-solid fa-spinner"></i></button>` : ''}
+                            ${t.status !== 'Resolved' ? `<button class="btn-tbl-action" style="color:#16a34a;" onclick="updateTicketStatus(${t.id}, 'Resolved')" title="Mark Resolved"><i class="fa-solid fa-check"></i></button>` : `<span style="font-size:11px; color:#16a34a; font-weight:700;"><i class="fa-solid fa-check-circle"></i> Closed</span>`}
                         </div>
                     </div>
-                `;
-            }).join('');
-        }
-        container.innerHTML += '</div>';
+                </div>
+            `;
+        };
+
+        openCol.innerHTML = openTickets.length > 0 ? openTickets.map(renderCard).join('') : '<p style="font-size:12px;color:#94a3b8;text-align:center;padding:12px;">No open tickets</p>';
+        inProgressCol.innerHTML = inProgressTickets.length > 0 ? inProgressTickets.map(renderCard).join('') : '<p style="font-size:12px;color:#94a3b8;text-align:center;padding:12px;">No in-progress tickets</p>';
+        resolvedCol.innerHTML = resolvedTickets.length > 0 ? resolvedTickets.map(renderCard).join('') : '<p style="font-size:12px;color:#94a3b8;text-align:center;padding:12px;">No resolved tickets</p>';
+
     } catch (e) { console.error('Error loading tickets:', e); }
 }
 
@@ -515,8 +701,133 @@ async function updateTicketStatus(id, status) {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({status})
         });
-        if(res.ok) { showToast(`Ticket marked as ${status}`); loadTickets(); }
+        if(res.ok) { showToast(`Ticket status updated to ${status}`); loadTickets(); loadDashboardOverview(); }
     } catch(e) {}
+}
+
+function openNewTicketModal() {
+    const modal = document.getElementById('ticketModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeTicketModal() {
+    const modal = document.getElementById('ticketModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function handleTicketFormSubmit(event) {
+    event.preventDefault();
+    const priority = document.getElementById('ticketPriority').value;
+    const subject = document.getElementById('ticketSubject').value.trim();
+    const description = document.getElementById('ticketDescription').value.trim();
+
+    try {
+        const res = await fetch('/api/tickets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ priority, subject, description })
+        });
+        if (res.ok) {
+            showToast('Support ticket created!');
+            closeTicketModal();
+            loadTickets();
+            loadDashboardOverview();
+        } else {
+            showToast('Failed to create ticket', 'error');
+        }
+    } catch (e) {
+        showToast('Network error creating ticket', 'error');
+    }
+}
+
+// --- 5. Analytics Handler ---
+async function loadAnalytics() {
+    try {
+        const response = await fetch('/api/analytics');
+        if (!response.ok) return;
+        const analytics = await response.json();
+
+        const deptContainer = document.getElementById('analyticsDeptBars');
+        if (deptContainer && analytics.departments) {
+            deptContainer.innerHTML = analytics.departments.map(d => `
+                <div>
+                    <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:600; margin-bottom:6px; color:#334155;">
+                        <span>${escapeHtml(d.name)} (${d.count} staff)</span>
+                        <span>${d.percentage}%</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" style="width:${d.percentage}%; background:${d.color};"></div></div>
+                </div>
+            `).join('');
+        }
+
+        const g = analytics.gender || {};
+        const malePct = g.male_pct || 0;
+
+        const donut = document.getElementById('genderDonut');
+        if (donut) {
+            donut.style.background = `conic-gradient(#00a884 0% ${malePct}%, #0284c7 ${malePct}% 100%)`;
+        }
+
+        const totalBadge = document.getElementById('genderTotalBadge');
+        if (totalBadge) totalBadge.innerText = `${analytics.total_employees || 0} Total`;
+
+        const mElem = document.getElementById('genderMalePct');
+        if (mElem) mElem.innerText = `${malePct}% (${g.male_count || 0})`;
+
+        const fElem = document.getElementById('genderFemalePct');
+        if (fElem) fElem.innerText = `${g.female_pct || 0}% (${g.female_count || 0})`;
+
+        const oElem = document.getElementById('genderOtherPct');
+        if (oElem) oElem.innerText = `${g.other_pct || 0}% (${g.other_count || 0})`;
+
+    } catch (e) { console.error('Error loading analytics:', e); }
+}
+
+// --- 6. Settings Handler ---
+async function loadProfileSettings() {
+    try {
+        const response = await fetch('/api/user/profile');
+        if (!response.ok) return;
+        const profile = await response.json();
+
+        const fn = document.getElementById('settingsFirstName');
+        const ln = document.getElementById('settingsLastName');
+        const em = document.getElementById('settingsEmail');
+        const rl = document.getElementById('settingsRole');
+        const bio = document.getElementById('settingsBio');
+
+        if (fn) fn.value = profile.first_name || 'HR';
+        if (ln) ln.value = profile.last_name || 'Admin';
+        if (em) em.value = profile.em_email || 'admin@rms.com';
+        if (rl) rl.value = (profile.em_role || 'ADMIN').toUpperCase();
+        if (bio) bio.value = profile.bio || 'System Administrator for HR App.';
+
+    } catch (e) { console.error('Error loading profile settings:', e); }
+}
+
+async function saveProfileSettings(event) {
+    event.preventDefault();
+    const first_name = document.getElementById('settingsFirstName').value.trim();
+    const last_name = document.getElementById('settingsLastName').value.trim();
+    const bio = document.getElementById('settingsBio').value.trim();
+
+    try {
+        const res = await fetch('/api/user/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ first_name, last_name, bio })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showToast('Profile updated successfully!');
+            const topName = document.querySelector('.greeting-text .status-badge');
+            if (topName) topName.innerHTML = `<i class="fa-solid fa-circle"></i> ${data.user_name}`;
+        } else {
+            showToast('Failed to update profile', 'error');
+        }
+    } catch (e) {
+        showToast('Network error updating profile', 'error');
+    }
 }
 
 // Load Summary Stats
