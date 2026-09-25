@@ -34,6 +34,12 @@ def login_required(f):
 import urllib.parse
 import ssl
 
+class PgRowWrapper(dict):
+    def __getitem__(self, item):
+        if isinstance(item, int):
+            return list(self.values())[item]
+        return super().__getitem__(item)
+
 class PgCursorWrapper:
     def __init__(self, cursor):
         self.cursor = cursor
@@ -76,7 +82,7 @@ class PgCursorWrapper:
             return None
         if hasattr(self.cursor, 'description') and self.cursor.description:
             colnames = [col[0] for col in self.cursor.description]
-            return dict(zip(colnames, res))
+            return PgRowWrapper(zip(colnames, res))
         return res
 
     def fetchall(self):
@@ -85,8 +91,9 @@ class PgCursorWrapper:
             return []
         if hasattr(self.cursor, 'description') and self.cursor.description:
             colnames = [col[0] for col in self.cursor.description]
-            return [dict(zip(colnames, r)) for r in rows]
+            return [PgRowWrapper(zip(colnames, r)) for r in rows]
         return rows
+
 
 
 class PgConnWrapper:
@@ -247,86 +254,90 @@ def init_db():
     seed_initial_data()
 
 def seed_initial_data():
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    # Get sample employee codes
-    rows = cursor.execute("SELECT em_code, full_name FROM employees LIMIT 10").fetchall()
-    emp_list = [dict(r) for r in rows]
-    if not emp_list:
+        # Get sample employee codes
+        rows = cursor.execute("SELECT em_code, full_name FROM employees LIMIT 10").fetchall()
+        emp_list = [dict(r) for r in rows]
+        if not emp_list:
+            conn.close()
+            return
+
+        emp1 = emp_list[0]['em_code']
+        emp2 = emp_list[1]['em_code'] if len(emp_list) > 1 else emp1
+        emp3 = emp_list[2]['em_code'] if len(emp_list) > 2 else emp1
+
+        # Seed Trainings if empty
+        cnt_trainings = cursor.execute("SELECT COUNT(*) FROM trainings").fetchone()[0]
+        if cnt_trainings == 0:
+            sample_trainings = [
+                ('2025-10-01', 'Advanced Python & Data Architecture', 'Dr. Aris Thorne', 40.0, 32.0, 'Sarah Jenkins, John Doe, Rita K.', 'In Progress', 'Deep dive into async patterns & Postgres optimization'),
+                ('2025-09-15', 'Corporate Cyber Security & Compliance', 'Marcus Vance', 20.0, 20.0, 'Alex M., Rita K., Michael Chen', 'Completed', 'Mandatory ISO27001 compliance and phishing prevention'),
+                ('2025-10-10', 'Agile Leadership & Scrum Essentials', 'Elena Rostova', 15.0, 0.0, 'John Doe, Sarah Jenkins', 'Upcoming', 'Interactive workshop on Sprint planning & retrospective'),
+                ('2025-08-20', 'UI/UX Design Systems & Micro-Interactions', 'Clara Oswald', 30.0, 30.0, 'Rita K., Alex M.', 'Completed', 'Figma components and dynamic CSS animations'),
+                ('2025-10-05', 'Cloud Infrastructure & DevOps Best Practices', 'David Kim', 25.0, 10.0, 'Sarah Jenkins, Marcus Vance', 'In Progress', 'AWS Lambda, Docker containers, and CI/CD pipelines')
+            ]
+            for t in sample_trainings:
+                cursor.execute('''
+                    INSERT INTO trainings (date, topic, faculty, program_duration, hours_completed, attendees, status, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ''', t)
+
+        # Seed Leave Requests if < 4
+        cnt_leaves = cursor.execute("SELECT COUNT(*) FROM leave_requests").fetchone()[0]
+        if cnt_leaves < 4:
+            sample_leaves = [
+                (emp1, 'Sick Leave', 2.0, '2025-10-12', '2025-10-13', 'Pending'),
+                (emp2, 'Casual Leave', 1.0, '2025-10-15', '2025-10-15', 'Approved'),
+                (emp3, 'Earned Leave', 5.0, '2025-11-01', '2025-11-05', 'Approved'),
+                (emp1, 'Maternity/Paternity Leave', 3.0, '2025-10-20', '2025-10-22', 'Rejected')
+            ]
+            for l in sample_leaves:
+                cursor.execute('''
+                    INSERT INTO leave_requests (em_code, leave_type, duration, start_date, end_date, status)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', l)
+
+        # Seed Helpdesk Tickets if < 4
+        cnt_tickets = cursor.execute("SELECT COUNT(*) FROM helpdesk_tickets").fetchone()[0]
+        if cnt_tickets < 4:
+            sample_tickets = [
+                (emp1, 'High', 'Tax Deduction Clarification (TDS)', 'Need detailed breakdown of TDS deduction for September paycheck.', 'Open'),
+                (emp2, 'Low', 'Replacement Access ID Badge', 'My physical RFID access card was misplaced yesterday.', 'Open'),
+                (emp3, 'Medium', 'Developer Workstation Upgrade', 'RAM upgrade required for running multi-container local dev server.', 'In Progress'),
+                (emp1, 'Low', 'PF Account UAN Transfer', 'Transfer request from previous employer UAN number to current entity.', 'Resolved')
+            ]
+            for tk in sample_tickets:
+                cursor.execute('''
+                    INSERT INTO helpdesk_tickets (em_code, priority, subject, description, status)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', tk)
+
+        # Seed Payroll if empty
+        cnt_payroll = cursor.execute("SELECT COUNT(*) FROM payroll").fetchone()[0]
+        if cnt_payroll == 0:
+            sample_payroll = [
+                (emp1, 'September 2025', 84500.0, 12300.0, 72200.0, 'Paid', '2025-10-01'),
+                (emp2, 'September 2025', 92000.0, 13500.0, 78500.0, 'Paid', '2025-10-01'),
+                (emp3, 'September 2025', 68000.0, 9200.0, 58800.0, 'Paid', '2025-10-01'),
+                (emp1, 'August 2025', 84500.0, 12300.0, 72200.0, 'Paid', '2025-09-01'),
+                (emp2, 'August 2025', 92000.0, 13500.0, 78500.0, 'Paid', '2025-09-01'),
+                (emp3, 'August 2025', 68000.0, 9200.0, 58800.0, 'Paid', '2025-09-01'),
+                (emp1, 'July 2025', 82100.0, 11800.0, 70300.0, 'Paid', '2025-08-01')
+            ]
+            for p in sample_payroll:
+                cursor.execute('''
+                    INSERT INTO payroll (em_code, month, gross, deductions, net_pay, status, processed_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', p)
+
+        conn.commit()
         conn.close()
-        return
+    except Exception as e:
+        print(f"Notice: seed_initial_data failed non-fatally: {e}")
 
-    emp1 = emp_list[0]['em_code']
-    emp2 = emp_list[1]['em_code'] if len(emp_list) > 1 else emp1
-    emp3 = emp_list[2]['em_code'] if len(emp_list) > 2 else emp1
-
-    # Seed Trainings if empty
-    cnt_trainings = cursor.execute("SELECT COUNT(*) FROM trainings").fetchone()[0]
-    if cnt_trainings == 0:
-        sample_trainings = [
-            ('2025-10-01', 'Advanced Python & Data Architecture', 'Dr. Aris Thorne', 40.0, 32.0, 'Sarah Jenkins, John Doe, Rita K.', 'In Progress', 'Deep dive into async patterns & Postgres optimization'),
-            ('2025-09-15', 'Corporate Cyber Security & Compliance', 'Marcus Vance', 20.0, 20.0, 'Alex M., Rita K., Michael Chen', 'Completed', 'Mandatory ISO27001 compliance and phishing prevention'),
-            ('2025-10-10', 'Agile Leadership & Scrum Essentials', 'Elena Rostova', 15.0, 0.0, 'John Doe, Sarah Jenkins', 'Upcoming', 'Interactive workshop on Sprint planning & retrospective'),
-            ('2025-08-20', 'UI/UX Design Systems & Micro-Interactions', 'Clara Oswald', 30.0, 30.0, 'Rita K., Alex M.', 'Completed', 'Figma components and dynamic CSS animations'),
-            ('2025-10-05', 'Cloud Infrastructure & DevOps Best Practices', 'David Kim', 25.0, 10.0, 'Sarah Jenkins, Marcus Vance', 'In Progress', 'AWS Lambda, Docker containers, and CI/CD pipelines')
-        ]
-        for t in sample_trainings:
-            cursor.execute('''
-                INSERT INTO trainings (date, topic, faculty, program_duration, hours_completed, attendees, status, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ''', t)
-
-    # Seed Leave Requests if < 4
-    cnt_leaves = cursor.execute("SELECT COUNT(*) FROM leave_requests").fetchone()[0]
-    if cnt_leaves < 4:
-        sample_leaves = [
-            (emp1, 'Sick Leave', 2.0, '2025-10-12', '2025-10-13', 'Pending'),
-            (emp2, 'Casual Leave', 1.0, '2025-10-15', '2025-10-15', 'Approved'),
-            (emp3, 'Earned Leave', 5.0, '2025-11-01', '2025-11-05', 'Approved'),
-            (emp1, 'Maternity/Paternity Leave', 3.0, '2025-10-20', '2025-10-22', 'Rejected')
-        ]
-        for l in sample_leaves:
-            cursor.execute('''
-                INSERT INTO leave_requests (em_code, leave_type, duration, start_date, end_date, status)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', l)
-
-    # Seed Helpdesk Tickets if < 4
-    cnt_tickets = cursor.execute("SELECT COUNT(*) FROM helpdesk_tickets").fetchone()[0]
-    if cnt_tickets < 4:
-        sample_tickets = [
-            (emp1, 'High', 'Tax Deduction Clarification (TDS)', 'Need detailed breakdown of TDS deduction for September paycheck.', 'Open'),
-            (emp2, 'Low', 'Replacement Access ID Badge', 'My physical RFID access card was misplaced yesterday.', 'Open'),
-            (emp3, 'Medium', 'Developer Workstation Upgrade', 'RAM upgrade required for running multi-container local dev server.', 'In Progress'),
-            (emp1, 'Low', 'PF Account UAN Transfer', 'Transfer request from previous employer UAN number to current entity.', 'Resolved')
-        ]
-        for tk in sample_tickets:
-            cursor.execute('''
-                INSERT INTO helpdesk_tickets (em_code, priority, subject, description, status)
-                VALUES (?, ?, ?, ?, ?)
-            ''', tk)
-
-    # Seed Payroll if empty
-    cnt_payroll = cursor.execute("SELECT COUNT(*) FROM payroll").fetchone()[0]
-    if cnt_payroll == 0:
-        sample_payroll = [
-            (emp1, 'September 2025', 84500.0, 12300.0, 72200.0, 'Paid', '2025-10-01'),
-            (emp2, 'September 2025', 92000.0, 13500.0, 78500.0, 'Paid', '2025-10-01'),
-            (emp3, 'September 2025', 68000.0, 9200.0, 58800.0, 'Paid', '2025-10-01'),
-            (emp1, 'August 2025', 84500.0, 12300.0, 72200.0, 'Paid', '2025-09-01'),
-            (emp2, 'August 2025', 92000.0, 13500.0, 78500.0, 'Paid', '2025-09-01'),
-            (emp3, 'August 2025', 68000.0, 9200.0, 58800.0, 'Paid', '2025-09-01'),
-            (emp1, 'July 2025', 82100.0, 11800.0, 70300.0, 'Paid', '2025-08-01')
-        ]
-        for p in sample_payroll:
-            cursor.execute('''
-                INSERT INTO payroll (em_code, month, gross, deductions, net_pay, status, processed_date)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', p)
-
-    conn.commit()
-    conn.close()
 
 
 def import_employees_csv():
@@ -338,6 +349,11 @@ def import_employees_csv():
     cursor = conn.cursor()
     
     try:
+        emp_count = cursor.execute("SELECT COUNT(*) FROM employees").fetchone()[0]
+        if emp_count > 0:
+            conn.close()
+            return
+
         with open(CSV_PATH, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             count = 0
